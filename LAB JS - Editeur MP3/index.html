@@ -1,0 +1,216 @@
+
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Audio Visualizer & Exporter (Vanilla JS)</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- MP3 export (facultatif). Si absent, l'export MP3 sera désactivé. -->
+    <script defer src="https://unpkg.com/lamejs@1.2.0/lame.min.js"></script>
+</head>
+<body>
+  
+
+<header>
+    <h1>
+      Audio Visualizer & Exporter
+      <button id="helpBtn" class="btn-secondary small">❔ Aide</button>
+    </h1>
+    <p>Charge un MP3, visualise la forme d’onde, sélectionne, mute les canaux, et exporte en WAV/MP3.</p>
+  </header>
+
+  <section class="file-loader">
+    <label class="file-label">
+      <span>🎵 Charger un fichier audio (.mp3 recommandé)</span>
+      <input id="fileInput" type="file" accept="audio/*" />
+    </label>
+    <div id="fileInfo" class="file-info">Aucun fichier chargé</div>
+  </section>
+
+  <section class="canvas-section">
+    <!-- Barre d'outils (zoom & grille) ajoutée, mais compacte -->
+    <div class="toolbar">
+      <div class="zoom-tools">
+        <button id="zoomOutBtn" title="Zoom out (Z)">➖</button>
+        <button id="zoomInBtn" title="Zoom in (A)">➕</button>
+        <button id="zoomResetBtn" title="Reset zoom (R)">⟲</button>
+        <span class="muted">Molette = défilement · Alt+Molette = zoom</span>
+      </div>
+      <div class="grid-tools">
+        <label><input type="checkbox" id="showGrid" checked /> Grille</label>
+        <label><input type="checkbox" id="snapGrid" /> Snap</label>
+        <label>BPM <input id="bpmInput" type="number" min="30" max="300" value="120" /></label>
+        <label>Mesure
+          <select id="timesig">
+            <option value="4/4" selected>4/4</option>
+            <option value="3/4">3/4</option>
+            <option value="6/8">6/8</option>
+          </select>
+        </label>
+      </div>
+    </div>
+
+    <canvas id="waveform" width="1280" height="280"></canvas>
+
+    <div class="timeline">
+      <span>Début sélection: <strong id="selStart">0.000 s</strong></span>
+      <span>Fin sélection: <strong id="selEnd">0.000 s</strong></span>
+      <span>Durée sélection: <strong id="selDur">0.000 s</strong></span>
+    </div>
+
+    <!-- Analyses (FFT + spectrogramme), discrets sous la forme d'onde -->
+    <div class="analysis">
+      <div class="analysis-panel">
+        <div class="panel-title">Spectre (FFT)</div>
+        <canvas id="spectrum" width="640" height="140"></canvas>
+      </div>
+      <div class="analysis-panel">
+        <div class="panel-title">Spectrogramme (live)</div>
+        <canvas id="spectrogram" width="640" height="140"></canvas>
+      </div>
+    </div>
+  </section>
+
+  <section class="controls">
+    <div class="playback">
+      <button id="playBtn" disabled>▶️ Lecture</button>
+      <button id="pauseBtn" disabled>⏸️ Pause</button>
+      <button id="stopBtn" disabled>⏹️ Stop</button>
+      <label><input type="checkbox" id="loopSel" /> Boucler la sélection (L)</label>
+      <button id="clearSelBtn" disabled>Effacer la sélection (Suppr)</button>
+      <button id="addRegionBtn" class="btn-secondary" disabled>➕ Ajouter région (M)</button>
+    </div>
+
+    <div class="channels">
+      <h3>Canaux & Mix</h3>
+      <label><input type="checkbox" id="muteL" /> Mute canal gauche</label>
+      <label><input type="checkbox" id="muteR" /> Mute canal droit</label>
+      <div class="slider-row">
+        <label>Gain gauche: <input id="gainL" type="range" min="0" max="2" step="0.01" value="1" /></label>
+        <label>Gain droit: <input id="gainR" type="range" min="0" max="2" step="0.01" value="1" /></label>
+      </div>
+      <div class="slider-row">
+        <label>Réduction du centre (voix): 
+          <input id="centerReduce" type="range" min="0" max="1" step="0.01" value="0" />
+          <span id="centerReduceVal">0%</span>
+        </label>
+        <small>Astuce “karaoké” : 0% = neutre, 100% = annulation maximum du centre</small>
+      </div>
+    </div>
+  </section>
+
+  <section class="export">
+    <h3>Export</h3>
+    <div class="export-row">
+      <label>Format :
+        <select id="formatSelect">
+          <option value="wav">WAV (lossless)</option>
+          <option value="mp3">MP3 (avec lamejs)</option>
+        </select>
+      </label>
+
+      <label>Contenu :
+        <select id="contentSelect">
+          <option value="selection-stereo">Sélection (stéréo, avec réglages)</option>
+          <option value="full-stereo" selected>Piste complète (stéréo, avec réglages)</option>
+          <option value="left-mono">Canal gauche seul (mono)</option>
+          <option value="right-mono">Canal droit seul (mono)</option>
+        </select>
+      </label>
+
+      <label>Bitrate MP3 :
+        <select id="mp3Bitrate">
+          <option>128</option>
+          <option selected>192</option>
+          <option>256</option>
+          <option>320</option>
+        </select> kbps
+      </label>
+    </div>
+
+    <div class="export-row">
+      <label><input type="checkbox" id="normalizeChk" /> Normaliser à</label>
+      <input id="targetDb" type="number" step="0.1" value="-1.0" style="width: 80px;" /> dBFS
+      <span class="muted">(pré‑gain automatique appliqué à l’export)</span>
+    </div>
+
+    <div class="export-row">
+      <button id="exportBtn" disabled>💾 Exporter</button>
+      <span id="exportStatus"></span>
+    </div>
+  </section>
+
+  <!-- Nouvelle section "Régions" (export batch), discrète et après l'Export -->
+  <section class="regions">
+    <div class="regions-header">
+      <h3>Régions</h3>
+      <button id="exportRegionsBtn" class="btn-secondary" disabled>💾 Exporter régions (batch)</button>
+    </div>
+    <div id="regionsList" class="regions-list empty">Aucune région. Crée-en une depuis la sélection (bouton “➕ Ajouter région”).</div>
+  </section>
+
+  <footer>
+    <small>
+      Astuce : clique-et-glisse sur le canvas pour définir la sélection.  
+      Limitations : la séparation par instrument n’est pas possible ici ; on agit sur les canaux G/D et la réduction du centre.
+    </small>
+  </footer>
+
+  <!-- Modale d'aide -->
+  <div id="helpModal" class="modal hidden" aria-hidden="true" role="dialog" aria-modal="true">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Aide & Raccourcis</h2>
+        <button id="helpClose" class="icon">✖</button>
+      </div>
+      <div class="modal-body">
+        <h3>Chargement & Visualisation</h3>
+        <ul>
+          <li>Charge un fichier audio (MP3, WAV, etc.).</li>
+          <li>Zoom : Alt+molette, boutons ➕/➖, <kbd>A</kbd>/<kbd>Z</kbd>. Reset : <kbd>R</kbd>.</li>
+          <li>Défilement : molette / trackpad.</li>
+        </ul>
+
+        <h3>Sélection & Régions</h3>
+        <ul>
+          <li>Glisse sur le canvas pour définir une sélection.</li>
+          <li><kbd>I</kbd> : In au curseur · <kbd>O</kbd> : Out au curseur · <kbd>L</kbd> : Boucle.</li>
+          <li><kbd>M</kbd> : Créer région depuis la sélection · Export batch via le bouton “Exporter régions”.</li>
+          <li><kbd>Suppr</kbd> : Effacer la sélection.</li>
+          <li><kbd>←</kbd>/<kbd>→</kbd> : Nudge du bord le plus proche (0,05s ; <kbd>Shift</kbd> = 0,5s).</li>
+          <li><kbd>,</kbd> / <kbd>.</kbd> : Aligner début/fin sur la grille (si Snap actif).</li>
+        </ul>
+
+        <h3>Grille Tempo</h3>
+        <ul>
+          <li>Active la grille et le snapping (BPM et mesure configurables).</li>
+          <li>Les lignes épaisses marquent les débuts de mesure.</li>
+        </ul>
+
+        <h3>Lecture & Mix</h3>
+        <ul>
+          <li><kbd>Espace</kbd> : Lecture/Stop · Bouton ⏸ : Pause.</li>
+          <li>Mute G/D, gains, et “Réduction centre” (atténue le contenu centré).</li>
+        </ul>
+
+        <h3>Analyse</h3>
+        <ul>
+          <li>FFT (spectre) en temps réel et spectrogramme live.</li>
+        </ul>
+
+        <h3>Export</h3>
+        <ul>
+          <li>WAV (sans perte) ou MP3 (si <code>lamejs</code> chargé).</li>
+          <li>Normalisation : vise une crête à la cible (par ex. -1 dBFS).</li>
+          <li>Export de la sélection, du morceau complet, ou d’un seul canal.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+
+
+  <script src="script.js"></script>
+</body>
+</html>
