@@ -1,0 +1,42 @@
+
+{
+  "loops": true,
+  "timeline": [
+    {
+      "time": 1.0,
+      "type": "formation",
+      "name": "line",
+      "count": 6,
+      "from": { "x": "left", "y": 120 },
+      "to":   { "x": "right", "y": "same" },
+      "shoot": { "pattern": "cone", "count": 5, "spreadDeg": 40, "speed": 220, "interval": 1.0 }
+    },
+    {
+      "time": 4.0,
+      "type": "formation",
+      "name": "circle",
+      "count": 8,
+      "center": { "x": "center", "y": 140 },
+      "radius": 90,
+      "trajectory": { "type": "lissajous", "ax": 80, "ay": 40, "fx": 3, "fy": 2, "speed": 30 }
+    },
+    {
+      "time": 8.0,
+      "type": "spawn",
+      "pos": { "x": "range(80,720)", "y": "top" },
+      "shoot": { "pattern": "ring", "count": 12, "speed": 200, "interval": 1.4 }
+    },
+    {
+      "time": 12.0,
+      "type": "spawn",
+      "pos": { "x": "left", "y": 200 },
+      "shoot": { "pattern": "wall", "count": 10, "speed": 180, "interval": 1.0 }
+    },
+    {
+      "time": 15.0,
+      "type": "spawn",
+      "pos": { "x": "range(60,740)", "y": "top" },
+      "shoot": { "pattern": "homing_delayed", "delay": 0.6, "speed": 260, "interval": 1.2 }
+    }
+  ]
+}

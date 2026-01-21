@@ -1,0 +1,28 @@
+
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>OMEGA — Vanilla JS Game</title>
+<style>
+  html,body{margin:0;background:#0e1217;color:#eef2f6;font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif}
+  #wrap{display:flex;flex-direction:column;align-items:center;gap:8px;padding:8px}
+  canvas{background:#0b0f14;border:1px solid #1f2630;width:100%;max-width:960px;height:auto;image-rendering:pixelated}
+  .bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:center}
+  .pill{background:#141a22;padding:6px 10px;border-radius:999px;border:1px solid #212a34}
+</style>
+</head>
+<body>
+  <div id="wrap">
+    <div class="bar">
+      <span class="pill">Mode : <strong id="modeLabel">title</strong></span>
+      <span class="pill">Entrée = valider · Échap = pause/retour</span>
+      tools/waves_editor.htmlÉditeur de vagues</a>
+      tools/level_editor.htmlÉditeur de niveaux</a>
+    </div>
+    <canvas id="game" width="800" height="450"></canvas>
+  </div>
+  ./game.js</script>
+</body>
+</html>
