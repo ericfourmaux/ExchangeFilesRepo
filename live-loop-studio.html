@@ -1,0 +1,859 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Live Loop Studio — Prototype (vanilla JS)</title>
+  <style>
+    :root {
+      --bg: #0b0f1a;
+      --panel: rgba(19, 24, 39, 0.85);
+      --text: #e6eefc;
+      --muted: #9fb0d0;
+      --accent: #5ef0ff;
+      --accent-2: #9a6bff;
+      --accent-3: #ff4d9d;
+      --good: #2ee59d;
+      --warn: #ffbf47;
+      --danger: #ff5d5d;
+      --glow: 0 0 20px rgba(94, 240, 255, 0.45), 0 0 48px rgba(154, 107, 255, 0.25);
+    }
+
+    /* Background with animated neon gradient */
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
+      color: var(--text);
+      background: radial-gradient(1200px 600px at 80% -10%, rgba(154,107,255,0.2), transparent),
+                  radial-gradient(900px 600px at -10% 30%, rgba(94,240,255,0.15), transparent),
+                  linear-gradient(180deg, #070b13, #0b0f1a);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .wrapper {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .title {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size:  clamp(20px, 3vw, 32px);
+      letter-spacing: 0.5px;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2), var(--accent-3));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      text-shadow: 0 0 10px rgba(94,240,255,0.25), 0 0 24px rgba(154,107,255,0.2);
+    }
+
+    .badge {
+      font-size: 12px;
+      color: var(--muted);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 999px;
+      padding: 4px 10px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px;
+      padding: 14px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.35), var(--glow);
+      backdrop-filter: blur(10px);
+    }
+
+    .topbar {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 14px;
+      align-items: center;
+      margin-bottom: 18px;
+    }
+
+    .group { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    label { font-size: 12px; color: var(--muted); }
+
+    input[type="number"], select {
+      color: var(--text);
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.12);
+      padding: 8px 10px;
+      border-radius: 10px;
+      outline: none;
+      transition: 0.2s ease;
+    }
+
+    input[type="number"]:focus, select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(94,240,255,0.18);
+    }
+
+    .btn {
+      appearance: none;
+      border: 1px solid rgba(255,255,255,0.12);
+      padding: 10px 14px;
+      border-radius: 12px;
+      color: var(--text);
+      background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 8px 16px rgba(0,0,0,0.35);
+      cursor: pointer;
+      transition: transform 0.08s ease, box-shadow 0.2s ease, border-color .2s ease;
+    }
+
+    .btn:hover { border-color: var(--accent); box-shadow: var(--glow); }
+    .btn:active { transform: translateY(1px) scale(0.99); }
+
+    .btn.primary { border-color: rgba(94,240,255,0.6); background: linear-gradient(90deg, rgba(94,240,255,0.18), rgba(154,107,255,0.18)); }
+    .btn.warning { border-color: rgba(255,191,71,0.6); }
+    .btn.danger { border-color: rgba(255,93,93,0.6); }
+    .btn.good { border-color: rgba(46,229,157,0.6); }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(1, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    @media (min-width: 900px) {
+      .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    .track {
+      position: relative;
+      padding: 12px;
+      border-radius: 14px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+      border: 1px solid rgba(255,255,255,0.07);
+    }
+
+    .track h3 { margin: 0 0 10px 0; font-size: 16px; letter-spacing: 0.4px; }
+
+    .accent-bar {
+      position: absolute; inset: -1px auto 0 0; width: 4px; border-radius: 12px 0 0 12px;
+      background: linear-gradient(180deg, var(--accent-2), var(--accent-3));
+      box-shadow: 0 0 14px rgba(154,107,255,0.8);
+    }
+
+    .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    .row + .row { margin-top: 8px; }
+
+    .slider {
+      width: 160px;
+      accent-color: var(--accent);
+    }
+
+    .small { font-size: 12px; color: var(--muted); }
+
+    .footer {
+      margin-top: 18px; font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap;
+    }
+
+    .kbd { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; padding: 2px 6px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.04); color: var(--text); }
+
+    .meter { height: 8px; background: rgba(255,255,255,0.06); border-radius: 999px; overflow: hidden; width: 120px; }
+    .meter > span { display: block; height: 100%; background: linear-gradient(90deg, #00ffa2, #f7ff00); width: 0%; transition: width 0.1s linear; }
+
+    .status { margin-top: 10px; color: var(--muted); font-size: 12px; min-height: 16px; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <header>
+      <div class="title">
+        <h1>Live Loop Studio</h1>
+        <span class="badge">Prototype — Vanilla JS · Web Audio</span>
+      </div>
+      <div class="group">
+        <button class="btn primary" id="initAudioBtn">Initialiser l'audio</button>
+        <button class="btn" id="transportPlay">Lecture</button>
+        <button class="btn" id="transportStop">Stop</button>
+        <button class="btn" id="metronomeToggle">Métronome: OFF</button>
+      </div>
+    </header>
+
+    <section class="panel topbar">
+      <div class="group">
+        <label for="bpm">BPM</label>
+        <input id="bpm" type="number" min="40" max="240" value="120" />
+        <label for="quant">Quantification</label>
+        <select id="quant">
+          <option value="none">Aucune</option>
+          <option value="1/4">Noire (1/4)</option>
+          <option value="1/2">Blanche (1/2)</option>
+          <option value="1bar" selected>1 mesure</option>
+          <option value="2bar">2 mesures</option>
+        </select>
+      </div>
+
+      <div class="group" style="justify-self:center;">
+        <button class="btn good" id="mixRecordBtn">Enregistrer le mix (WAV)</button>
+        <button class="btn warning" id="mixStopBtn" disabled>Arrêter</button>
+        <a id="mixDownload" class="btn" href="#" download="mix.wav" style="display:none;">Télécharger mix.wav</a>
+      </div>
+
+      <div class="group" style="justify-self:end;">
+        <label>Piste armée (micro)</label>
+        <select id="armedTrack"></select>
+        <span class="small">Appuie sur <span class="kbd">Espace</span> pour démarrer/arrêter l'enregistrement live.</span>
+      </div>
+    </section>
+
+    <section class="grid" id="tracks"></section>
+
+    <div class="footer">
+      <div>
+        <span class="small">Conseil : pour utiliser le micro, ouvre ce fichier via <strong>https://</strong> ou <strong>http://localhost</strong> (sécurité navigateur).</span>
+      </div>
+      <div class="small">
+        Raccourcis: <span class="kbd">Espace</span> enregistrer micro · <span class="kbd">L</span> lecture/stop · <span class="kbd">M</span> métronome
+      </div>
+    </div>
+
+    <div class="status" id="status"></div>
+  </div>
+
+  <script>
+    // --- Utilities ---
+    const $ = (sel) => document.querySelector(sel);
+    const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+
+    function setStatus(msg) { document.getElementById('status').textContent = msg || ''; }
+
+    function clamp(v, lo, hi) { return Math.min(hi, Math.max(lo, v)); }
+
+    function secondsPerBeat(bpm) { return 60 / bpm; }
+    function secondsPerBar(bpm, beatsPerBar = 4) { return secondsPerBeat(bpm) * beatsPerBar; }
+
+    function nextGridTime(ctx, bpm, grid) {
+      if (!ctx) return 0;
+      const t = ctx.currentTime;
+      if (grid === 'none') return t + 0.02; // immediate
+      const spb = secondsPerBeat(bpm);
+      const bar = secondsPerBar(bpm);
+      let step = bar; // default 1 bar
+      if (grid === '1/4') step = spb;        // quarter
+      else if (grid === '1/2') step = spb*2; // half
+      else if (grid === '2bar') step = bar*2;
+      const next = Math.ceil(t / step) * step;
+      return next + 0.02; // small safety offset
+    }
+
+    function computeLoopBpm(audioBuffer, bars=1) {
+      const d = audioBuffer.duration;
+      const beats = bars * 4; // assume 4/4
+      const spb = d / beats;
+      return 60 / spb; // bpm
+    }
+
+    function createWavBlobFromFloat32(float32Array, sampleRate, numChannels=1) {
+      // Convert Float32 [-1,1] to 16-bit PCM and wrap in a WAV container
+      const bytesPerSample = 2;
+      const blockAlign = numChannels * bytesPerSample;
+      const bufferLength = float32Array.length * bytesPerSample;
+      const headerSize = 44;
+      const totalSize = headerSize + bufferLength;
+      const wav = new ArrayBuffer(totalSize);
+      const view = new DataView(wav);
+
+      function writeString(offset, str) {
+        for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+      }
+
+      // RIFF header
+      writeString(0, 'RIFF');
+      view.setUint32(4, 36 + bufferLength, true);
+      writeString(8, 'WAVE');
+      writeString(12, 'fmt ');
+      view.setUint32(16, 16, true); // PCM chunk size
+      view.setUint16(20, 1, true); // PCM format
+      view.setUint16(22, numChannels, true);
+      view.setUint32(24, sampleRate, true);
+      view.setUint32(28, sampleRate * blockAlign, true); // byte rate
+      view.setUint16(32, blockAlign, true);
+      view.setUint16(34, 16, true); // bits per sample
+      writeString(36, 'data');
+      view.setUint32(40, bufferLength, true);
+
+      // data
+      let offset = 44;
+      for (let i = 0; i < float32Array.length; i++) {
+        let s = Math.max(-1, Math.min(1, float32Array[i]));
+        view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+        offset += 2;
+      }
+
+      return new Blob([view], { type: 'audio/wav' });
+    }
+
+    // Interleave multiple Float32 mono channels into one (simple mix) and normalize
+    function mixDown(buffers) {
+      // buffers: array of Float32Array (same length)
+      if (!buffers || !buffers.length) return new Float32Array();
+      const len = Math.max(...buffers.map(b => b.length));
+      const out = new Float32Array(len);
+      buffers.forEach(b => {
+        for (let i = 0; i < b.length; i++) out[i] += b[i];
+      });
+      // simple soft clip/normalize
+      let peak = 0;
+      for (let i = 0; i < len; i++) peak = Math.max(peak, Math.abs(out[i]));
+      if (peak > 1e-6) {
+        const k = 0.98 / peak;
+        for (let i = 0; i < len; i++) out[i] *= k;
+      }
+      return out;
+    }
+
+    // --- Audio Engine ---
+    const Engine = {
+      ctx: null,
+      masterGain: null,
+      masterAnalyser: null,
+      trackCount: 4,
+      tracks: [],
+      convolver: null,
+      delay: null,
+      delayFeedback: null,
+      filter: null,
+      metronome: { on:false, tick:null, gain:null },
+      transport: { playing:false, startTime:0 },
+      bpm: 120,
+      quant: '1bar',
+      mic: { stream: null, source: null },
+      recorderNode: null, // master recorder worklet
+      mixChunks: [],
+      mixRecording: false,
+      armedTrackIndex: 0,
+      micRecorder: null, // worklet for mic recording
+      micChunks: [],
+
+      async init() {
+        if (this.ctx) return;
+        const ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
+        this.ctx = ctx;
+
+        // Master
+        this.masterGain = ctx.createGain();
+        this.masterGain.gain.value = 0.9;
+
+        // Master Filter
+        this.filter = ctx.createBiquadFilter();
+        this.filter.type = 'lowpass';
+        this.filter.frequency.value = 18000;
+
+        // Delay
+        this.delay = ctx.createDelay(5.0);
+        this.delay.delayTime.value = 0.25; // sec
+        this.delayFeedback = ctx.createGain();
+        this.delayFeedback.gain.value = 0.25;
+        this.delay.connect(this.delayFeedback).connect(this.delay);
+
+        // Reverb (generated impulse)
+        this.convolver = ctx.createConvolver();
+        this.convolver.buffer = this._makeImpulse(2.0, 2.0); // 2s tail
+
+        // Master analyser (for meters)
+        this.masterAnalyser = ctx.createAnalyser();
+        this.masterAnalyser.fftSize = 2048;
+
+        // FX graph: tracks -> [filter] -> [delay send + convolver send mixed] -> masterGain -> destination
+        // We'll use per-track sends to delay & convolver; here we sum to a bus before master.
+        const fxSum = ctx.createGain(); fxSum.gain.value = 1.0;
+        this.fxSum = fxSum;
+
+        // Sum bus
+        const sum = ctx.createGain(); sum.gain.value = 1.0;
+        this.sum = sum;
+
+        // Route: sum + fxSum -> filter -> masterGain -> analyser -> destination
+        sum.connect(this.filter);
+        fxSum.connect(this.filter);
+        this.filter.connect(this.delay);
+        this.delay.connect(this.masterGain);
+        this.filter.connect(this.convolver);
+        this.convolver.connect(this.masterGain);
+        this.filter.connect(this.masterGain);
+        this.masterGain.connect(this.masterAnalyser);
+
+        // Master recorder tee
+        const masterTee = ctx.createGain(); masterTee.gain.value = 1.0;
+        this.masterAnalyser.connect(masterTee);
+        masterTee.connect(ctx.destination);
+
+        // Load worklets
+        await this._loadWorklets();
+
+        // Master recording worklet
+        this.recorderNode = new AudioWorkletNode(ctx, 'recorder-processor');
+        // Connect master bus to recorder
+        this.masterGain.connect(this.recorderNode);
+        this.recorderNode.port.onmessage = (e) => {
+          const { type, chunk } = e.data || {};
+          if (type === 'data' && this.mixRecording) {
+            this.mixChunks.push(chunk);
+          }
+        };
+
+        // Mic recorder worklet
+        this.micRecorder = new AudioWorkletNode(ctx, 'recorder-processor');
+        this.micRecorder.port.onmessage = (e) => {
+          const { type, chunk } = e.data || {};
+          if (type === 'data' && this._micCapturing) {
+            this.micChunks.push(chunk);
+          }
+        };
+
+        // Metronome
+        this._setupMetronome();
+
+        // Create tracks
+        for (let i = 0; i < this.trackCount; i++) {
+          this.tracks.push(this._createTrack(i));
+        }
+
+        // Mic stream (ask on init)
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true }, video: false });
+          this.mic.stream = stream;
+          this.mic.source = ctx.createMediaStreamSource(stream);
+          // Route mic both to selected track input (when armed) and to micRecorder for capture
+          this.mic.source.connect(this.micRecorder);
+        } catch (err) {
+          console.warn('Micro non disponible :', err);
+          setStatus("Micro non disponible. Autorise l'accès au micro dans le navigateur.");
+        }
+
+        setStatus('Audio prêt.');
+      },
+
+      _makeImpulse(seconds=2.0, decay=2.0) {
+        const rate = this.ctx.sampleRate;
+        const length = rate * seconds;
+        const impulse = this.ctx.createBuffer(2, length, rate);
+        for (let ch=0; ch<2; ch++) {
+          const data = impulse.getChannelData(ch);
+          for (let i=0; i<length; i++) {
+            data[i] = (Math.random()*2-1) * Math.pow(1 - i/length, decay);
+          }
+        }
+        return impulse;
+      },
+
+      async _loadWorklets() {
+        // Inline worklet as Blob
+        const code = `
+          class RecorderProcessor extends AudioWorkletProcessor {
+            constructor() {
+              super();
+              this.enabled = true;
+            }
+            process(inputs) {
+              if (!this.enabled) return true;
+              const input = inputs[0];
+              if (!input || input.length === 0) return true;
+              const ch0 = input[0];
+              // mix down to mono
+              const len = ch0.length;
+              const out = new Float32Array(len);
+              for (let i=0; i<len; i++) {
+                let sum = 0;
+                for (let c=0; c<input.length; c++) sum += input[c][i] || 0;
+                out[i] = sum / (input.length || 1);
+              }
+              this.port.postMessage({ type: 'data', chunk: out }, [out.buffer]);
+              return true;
+            }
+          }
+          registerProcessor('recorder-processor', RecorderProcessor);
+        `;
+        const blob = new Blob([code], { type: 'application/javascript' });
+        const url = URL.createObjectURL(blob);
+        await this.ctx.audioWorklet.addModule(url);
+      },
+
+      _setupMetronome() {
+        const ctx = this.ctx;
+        const gain = ctx.createGain();
+        gain.gain.value = 0.0; // off by default
+        gain.connect(this.masterGain);
+        this.metronome.gain = gain;
+        this.metronome.on = false;
+      },
+
+      toggleMetronome() {
+        this.metronome.on = !this.metronome.on;
+        $('#metronomeToggle').textContent = `Métronome: ${this.metronome.on ? 'ON' : 'OFF'}`;
+      },
+
+      scheduleMetronomeTick() {
+        if (!this.metronome.on) return;
+        const ctx = this.ctx;
+        const bpm = this.bpm;
+        const spb = secondsPerBeat(bpm);
+        const t = nextGridTime(ctx, bpm, '1/4');
+        for (let i = 0; i < 8; i++) {
+          const osc = ctx.createOscillator();
+          const g = ctx.createGain();
+          const when = t + i*spb;
+          // Accents on the 1st beat
+          osc.frequency.value = (i % 4 === 0) ? 1600 : 1100;
+          g.gain.setValueAtTime(0.0001, when);
+          g.gain.exponentialRampToValueAtTime(0.5, when + 0.001);
+          g.gain.exponentialRampToValueAtTime(0.0001, when + 0.08);
+          osc.connect(g).connect(this.metronome.gain);
+          osc.start(when);
+          osc.stop(when + 0.1);
+        }
+      },
+
+      _createTrack(index) {
+        const ctx = this.ctx;
+        const gain = ctx.createGain(); gain.gain.value = 0.9;
+        const pan = ctx.createStereoPanner(); pan.pan.value = 0;
+        const reverbSend = ctx.createGain(); reverbSend.gain.value = 0.0;
+        const delaySend = ctx.createGain(); delaySend.gain.value = 0.0;
+
+        // routing
+        gain.connect(pan).connect(this.sum).connect(this.masterGain);
+        gain.connect(reverbSend).connect(this.convolver);
+        gain.connect(delaySend).connect(this.delay);
+
+        return {
+          index,
+          name: `Piste ${index+1}`,
+          gain, pan, reverbSend, delaySend,
+          clip: null,
+          playing: false,
+          currentNode: null,
+          armed: index===0,
+          micMonitorGain: ctx.createGain(),
+        };
+      },
+
+      setBpm(value) { this.bpm = clamp(+value || 120, 40, 240); },
+      setQuant(q) { this.quant = q; },
+
+      play() {
+        if (this.transport.playing) return;
+        this.transport.playing = true;
+        this.transport.startTime = this.ctx.currentTime;
+        // Start all clips that are flagged playing
+        this.tracks.forEach(t => { if (t.clip && t.playing) this._startClip(t); });
+        if (this.metronome.on) this.scheduleMetronomeTick();
+        setStatus('Lecture');
+      },
+
+      stop() {
+        this.transport.playing = false;
+        this.tracks.forEach(t => this._stopClip(t, true));
+        setStatus('Stop');
+      },
+
+      toggleClip(track) {
+        if (!track.clip) return;
+        track.playing = !track.playing;
+        if (track.playing) this._startClip(track); else this._stopClip(track);
+      },
+
+      _startClip(track) {
+        const ctx = this.ctx;
+        const buffer = track.clip.buffer;
+        const bars = track.clip.bars || 1;
+        const source = ctx.createBufferSource();
+        source.buffer = buffer;
+        source.loop = true;
+        // time-stretch via playbackRate
+        const clipBpm = track.clip.originalBpm || computeLoopBpm(buffer, bars);
+        const rate = this.bpm / clipBpm;
+        source.playbackRate.value = rate;
+        source.connect(track.gain);
+        const when = nextGridTime(ctx, this.bpm, this.quant);
+        source.start(when);
+        track.currentNode = source;
+        if (this.metronome.on) this.scheduleMetronomeTick();
+      },
+
+      _stopClip(track, immediate=false) {
+        if (track.currentNode) {
+          try {
+            if (immediate || this.quant==='none') track.currentNode.stop();
+            else track.currentNode.stop(nextGridTime(this.ctx, this.bpm, this.quant));
+          } catch(e){}
+          track.currentNode = null;
+        }
+      },
+
+      async loadClipToTrack(trackIndex, file, bars=1) {
+        const ctx = this.ctx;
+        const arrayBuf = await file.arrayBuffer();
+        const audioBuf = await ctx.decodeAudioData(arrayBuf);
+        const clip = { name: file.name, buffer: audioBuf, bars: Math.max(1, Math.floor(+bars||1)) };
+        clip.originalBpm = computeLoopBpm(audioBuf, clip.bars);
+        this.tracks[trackIndex].clip = clip;
+        setStatus(`Chargé sur ${this.tracks[trackIndex].name}: ${file.name} (${clip.bars} mesures, ~${clip.originalBpm.toFixed(1)} BPM)`);
+      },
+
+      // --- Live mic recording into armed track ---
+      _micCapturing: false,
+      _micStartTimeout: null,
+      toggleMicRecord() {
+        if (!this.mic.source) { setStatus("Micro non disponible."); return; }
+        if (this._micCapturing) {
+          // Stop capture now or at grid
+          this._stopMicAtGrid();
+        } else {
+          this._startMicAtGrid();
+        }
+      },
+
+      _startMicAtGrid() {
+        const when = nextGridTime(this.ctx, this.bpm, this.quant);
+        const delayMs = Math.max(0, (when - this.ctx.currentTime) * 1000);
+        clearTimeout(this._micStartTimeout);
+        this._micStartTimeout = setTimeout(() => {
+          this.micChunks = [];
+          this._micCapturing = true;
+          setStatus(`Enregistrement micro… (piste ${this.armedTrackIndex+1})`);
+        }, delayMs);
+      },
+
+      _stopMicAtGrid() {
+        const when = nextGridTime(this.ctx, this.bpm, this.quant);
+        const delayMs = Math.max(0, (when - this.ctx.currentTime) * 1000);
+        setTimeout(() => {
+          this._micCapturing = false;
+          // Build buffer from chunks
+          const mixed = mixDown(this.micChunks);
+          if (mixed.length === 0) { setStatus('Aucune donnée micro.'); return; }
+          // Trim to whole bars length
+          const sr = this.ctx.sampleRate;
+          const barSec = secondsPerBar(this.bpm);
+          const barSamples = Math.round(barSec * sr);
+          const bars = Math.max(1, Math.round(mixed.length / barSamples));
+          const targetLen = bars * barSamples;
+          const trimmed = new Float32Array(targetLen);
+          trimmed.set(mixed.subarray(0, Math.min(mixed.length, targetLen)));
+
+          // Create AudioBuffer
+          const buf = this.ctx.createBuffer(1, trimmed.length, sr);
+          buf.copyToChannel(trimmed, 0);
+
+          // Assign to armed track
+          const t = this.tracks[this.armedTrackIndex];
+          t.clip = {
+            name: 'Enregistrement mic',
+            buffer: buf,
+            bars,
+            originalBpm: this.bpm // recorded to project grid
+          };
+          t.playing = true;
+          this._startClip(t);
+          setStatus(`Enregistrement terminé: ${bars} mesures → ${t.name}`);
+        }, delayMs);
+      },
+
+      // --- Mix record to WAV (real-time) ---
+      startMixRecord() {
+        if (this.mixRecording) return;
+        this.mixChunks = [];
+        this.mixRecording = true;
+        setStatus('Enregistrement du mix en cours…');
+      },
+      stopMixRecord() {
+        if (!this.mixRecording) return;
+        this.mixRecording = false;
+        const mixed = mixDown(this.mixChunks);
+        const wav = createWavBlobFromFloat32(mixed, this.ctx.sampleRate, 1);
+        const url = URL.createObjectURL(wav);
+        const a = document.getElementById('mixDownload');
+        a.href = url; a.style.display = 'inline-block';
+        setStatus(`Mix enregistré (${(mixed.length/this.ctx.sampleRate).toFixed(2)}s). Clique sur Télécharger.`);
+      }
+    };
+
+    // --- UI wiring ---
+    const trackColors = ['#5ef0ff', '#9a6bff', '#ff4d9d', '#2ee59d'];
+
+    function buildTrackUI() {
+      const container = document.getElementById('tracks');
+      container.innerHTML = '';
+      for (let i=0; i<Engine.trackCount; i++) {
+        const div = document.createElement('div');
+        div.className = 'track panel';
+        div.innerHTML = `
+          <div class="accent-bar" style="background: linear-gradient(180deg, ${trackColors[i%trackColors.length]}, var(--accent-3));"></div>
+          <h3>Piste ${i+1} <span class="small" id="t${i}-name"></span></h3>
+          <div class="row">
+            <input type="file" id="t${i}-file" accept="audio/wav, audio/mp3, audio/mpeg" />
+            <label>Mesures</label>
+            <input type="number" id="t${i}-bars" value="4" min="1" max="64" style="width:80px;" />
+            <button class="btn" id="t${i}-load">Charger</button>
+            <button class="btn" id="t${i}-toggle">Play/Stop</button>
+            <button class="btn" id="t${i}-mute">Mute</button>
+            <button class="btn" id="t${i}-solo">Solo</button>
+          </div>
+          <div class="row">
+            <label>Volume</label>
+            <input type="range" id="t${i}-vol" class="slider" min="0" max="1.5" step="0.01" value="0.9" />
+            <label>Pan</label>
+            <input type="range" id="t${i}-pan" class="slider" min="-1" max="1" step="0.01" value="0" />
+            <label>Reverb</label>
+            <input type="range" id="t${i}-rev" class="slider" min="0" max="1" step="0.01" value="0.0" />
+            <label>Delay</label>
+            <input type="range" id="t${i}-dly" class="slider" min="0" max="1" step="0.01" value="0.0" />
+          </div>
+          <div class="row small">
+            <div class="meter"><span id="t${i}-meter"></span></div>
+            <span id="t${i}-info"></span>
+          </div>
+        `;
+        container.appendChild(div);
+      }
+
+      // Armed track select
+      const armed = document.getElementById('armedTrack');
+      armed.innerHTML = '';
+      for (let i=0; i<Engine.trackCount; i++) {
+        const opt = document.createElement('option');
+        opt.value = i; opt.textContent = `Piste ${i+1}`;
+        if (i===0) opt.selected = true;
+        armed.appendChild(opt);
+      }
+    }
+
+    function wireTrackEvents() {
+      for (let i=0; i<Engine.trackCount; i++) {
+        const loadBtn = document.getElementById(`t${i}-load`);
+        const fileInput = document.getElementById(`t${i}-file`);
+        const barsInput = document.getElementById(`t${i}-bars`);
+        const toggleBtn = document.getElementById(`t${i}-toggle`);
+        const muteBtn = document.getElementById(`t${i}-mute`);
+        const soloBtn = document.getElementById(`t${i}-solo`);
+        const vol = document.getElementById(`t${i}-vol`);
+        const pan = document.getElementById(`t${i}-pan`);
+        const rev = document.getElementById(`t${i}-rev`);
+        const dly = document.getElementById(`t${i}-dly`);
+
+        loadBtn.onclick = async () => {
+          if (!fileInput.files[0]) { setStatus('Choisis un fichier audio.'); return; }
+          await Engine.loadClipToTrack(i, fileInput.files[0], +barsInput.value || 4);
+          const t = Engine.tracks[i];
+          document.getElementById(`t${i}-name`).textContent = `— ${t.clip?.name || ''}`;
+          document.getElementById(`t${i}-info`).textContent = `${t.clip?.bars || 0} mesures · ~${t.clip?.originalBpm.toFixed(1) || 0} BPM`;
+        };
+
+        toggleBtn.onclick = () => {
+          const t = Engine.tracks[i];
+          if (!t.clip) { setStatus('Aucune boucle chargée.'); return; }
+          Engine.toggleClip(t);
+        };
+
+        let muted = false; let soloed = false;
+        muteBtn.onclick = () => {
+          muted = !muted; muteBtn.textContent = muted ? 'Unmute' : 'Mute';
+          const t = Engine.tracks[i]; t.gain.gain.value = muted ? 0 : +vol.value;
+        };
+        soloBtn.onclick = () => {
+          soloed = !soloed; soloBtn.textContent = soloed ? 'Unsolo' : 'Solo';
+          if (soloed) {
+            for (let j=0; j<Engine.trackCount; j++) if (j!==i) Engine.tracks[j].gain.gain.value = 0;
+            Engine.tracks[i].gain.gain.value = +vol.value;
+          } else {
+            for (let j=0; j<Engine.trackCount; j++) {
+              const v = document.getElementById(`t${j}-vol`).value;
+              Engine.tracks[j].gain.gain.value = +v;
+            }
+          }
+        };
+
+        vol.oninput = () => { Engine.tracks[i].gain.gain.value = +vol.value; };
+        pan.oninput = () => { Engine.tracks[i].pan.pan.value = +pan.value; };
+        rev.oninput = () => { Engine.tracks[i].reverbSend.gain.value = +rev.value; };
+        dly.oninput = () => { Engine.tracks[i].delaySend.gain.value = +dly.value; };
+      }
+
+      // Simple level meter for master (visual)
+      const meterSpan = document.createElement('span');
+      const meter = document.createElement('div');
+    }
+
+    function wireGlobalEvents() {
+      document.getElementById('initAudioBtn').onclick = async () => {
+        await Engine.init();
+      };
+      document.getElementById('transportPlay').onclick = () => Engine.play();
+      document.getElementById('transportStop').onclick = () => Engine.stop();
+      document.getElementById('metronomeToggle').onclick = () => Engine.toggleMetronome();
+
+      document.getElementById('mixRecordBtn').onclick = () => {
+        Engine.startMixRecord();
+        document.getElementById('mixRecordBtn').disabled = true;
+        document.getElementById('mixStopBtn').disabled = false;
+        document.getElementById('mixDownload').style.display = 'none';
+      };
+      document.getElementById('mixStopBtn').onclick = () => {
+        Engine.stopMixRecord();
+        document.getElementById('mixRecordBtn').disabled = false;
+        document.getElementById('mixStopBtn').disabled = true;
+      };
+
+      document.getElementById('bpm').oninput = (e) => {
+        Engine.setBpm(e.target.value);
+      };
+      document.getElementById('quant').onchange = (e) => {
+        Engine.setQuant(e.target.value);
+      };
+      document.getElementById('armedTrack').onchange = (e) => {
+        Engine.armedTrackIndex = +e.target.value;
+      };
+
+      // Keyboard
+      window.addEventListener('keydown', (e) => {
+        if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA')) return;
+        if (e.code === 'Space') { e.preventDefault(); Engine.toggleMicRecord(); }
+        if (e.key === 'l' || e.key === 'L') { Engine.transport.playing ? Engine.stop() : Engine.play(); }
+        if (e.key === 'm' || e.key === 'M') { Engine.toggleMetronome(); }
+      });
+
+      // Simple master meter animation
+      const analyser = () => {
+        if (!Engine.ctx) return requestAnimationFrame(analyser);
+        const arr = new Uint8Array(Engine.masterAnalyser.fftSize);
+        Engine.masterAnalyser.getByteTimeDomainData(arr);
+        let peak = 0; for (let i=0;i<arr.length;i++) peak = Math.max(peak, Math.abs(arr[i]-128)/128);
+        // Update per-track meter (optional) or a single global status
+        requestAnimationFrame(analyser);
+      };
+      requestAnimationFrame(analyser);
+    }
+
+    // Build UI and wire
+    buildTrackUI();
+    wireTrackEvents();
+    wireGlobalEvents();
+
+    // Helpful console
+    console.log('%cLive Loop Studio', 'color:#5ef0ff; font-weight:bold;', '— Prototype Web Audio');
+  </script>
+</body>
+</html>
