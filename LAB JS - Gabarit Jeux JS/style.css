@@ -1,4 +1,0 @@
-html, body { margin: 0; padding: 0; background: #1c1f22; color: #eee; font-family: system-ui, sans-serif; }
-#wrap { display:flex; flex-direction:column; align-items:center; gap:8px; padding: 8px; }
-canvas { background: #111; image-rendering: pixelated; border:1px solid #333; }
-small { opacity:.7; }
