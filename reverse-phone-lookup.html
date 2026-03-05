@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Reverse Lookup (Vanilla JS)</title>
+  <style>
+    :root {
+      --bg: #0f172a;          /* slate-900 */
+      --panel: #111827;       /* gray-900 */
+      --muted: #94a3b8;       /* slate-400 */
+      --text: #e5e7eb;        /* gray-200 */
+      --accent: #22c55e;      /* green-500 */
+      --accent-2: #3b82f6;    /* blue-500 */
+      --danger: #ef4444;      /* red-500 */
+      --warning: #f59e0b;     /* amber-500 */
+      --card: #0b1220;        /* custom */
+      --input: #0b1220;
+      --border: #1f2937;      /* gray-800 */
+      --chip: #111827;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Noto Sans", "Helvetica Neue", Arial, "Apple Color Emoji","Segoe UI Emoji";
+      background: radial-gradient(1200px 600px at 20% -10%, #1f2937 10%, transparent 50%),
+                  radial-gradient(800px 400px at 120% 10%, #0ea5e9 10%, transparent 60%),
+                  radial-gradient(1200px 600px at -10% 110%, #22c55e 10%, transparent 60%),
+                  var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+    .app {
+      width: 100%;
+      max-width: 880px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow:
+        0 0 0 1px rgba(255,255,255,0.02) inset,
+        0 10px 25px rgba(0,0,0,0.35),
+        0 40px 80px rgba(0,0,0,0.35);
+      backdrop-filter: blur(6px);
+    }
+    header {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .brand .logo {
+      width: 40px; height: 40px; border-radius: 10px;
+      display: grid; place-items: center;
+      background: radial-gradient(120px 60px at 20% 20%, rgba(34,197,94,0.35), transparent 60%),
+                  radial-gradient(120px 60px at 80% 80%, rgba(59,130,246,0.4), transparent 60%),
+                  #0b1220;
+      border: 1px solid var(--border);
+      box-shadow: 0 6px 16px rgba(0,0,0,0.35);
+      font-weight: 700;
+      color: #9bd6ff;
+    }
+    .brand h1 {
+      font-size: 16px;
+      margin: 0;
+      letter-spacing: 0.3px;
+    }
+    .key-status {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .key-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--danger);
+      box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.15);
+    }
+    .key-dot.ok {
+      background: var(--accent);
+      box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.15);
+    }
+    main {
+      padding: 24px;
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 16px;
+    }
+    @media (max-width: 900px) {
+      main { grid-template-columns: 1fr; }
+    }
+    .panel {
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.015));
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+    }
+    .controls {
+      display: grid; gap: 12px;
+    }
+    label {
+      font-size: 13px; color: var(--muted);
+    }
+    .input-row {
+      display: flex; gap: 10px;
+    }
+    input[type="tel"] {
+      flex: 1;
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--input);
+      color: var(--text);
+      outline: none;
+      transition: border-color .15s ease, box-shadow .15s ease;
+      box-shadow: 0 2px 0 rgba(255,255,255,0.02) inset;
+    }
+    input[type="tel"]::placeholder { color: #64748b; }
+    input[type="tel"]:focus {
+      border-color: #2563eb55;
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+    }
+    button {
+      background: linear-gradient(180deg, #2563eb, #1d4ed8);
+      color: white; border: none; border-radius: 10px;
+      padding: 12px 16px; cursor: pointer; font-weight: 600;
+      box-shadow: 0 10px 18px rgba(37, 99, 235, 0.25), 0 2px 0 rgba(0,0,0,0.2) inset;
+      transition: transform .08s ease, box-shadow .15s ease, opacity .2s ease;
+    }
+    button:hover { box-shadow: 0 14px 24px rgba(37, 99, 235, 0.33); }
+    button:active { transform: translateY(1px); }
+    button.secondary {
+      background: linear-gradient(180deg, #374151, #111827);
+      box-shadow: 0 10px 18px rgba(0,0,0,0.25), 0 2px 0 rgba(255,255,255,0.02) inset;
+    }
+    button.warning {
+      background: linear-gradient(180deg, #f59e0b, #b45309);
+      box-shadow: 0 10px 18px rgba(245, 158, 11, 0.25), 0 2px 0 rgba(0,0,0,0.2) inset;
+    }
+    button.danger {
+      background: linear-gradient(180deg, #ef4444, #b91c1c);
+      box-shadow: 0 10px 18px rgba(239, 68, 68, 0.25), 0 2px 0 rgba(0,0,0,0.2) inset;
+    }
+    .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+    .note { font-size: 12px; color: var(--muted); line-height: 1.5; }
+    .result {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      white-space: pre-wrap;
+      word-break: break-word;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      color: #d1fae5;
+      min-height: 160px;
+      max-height: 420px;
+      overflow: auto;
+    }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .chip {
+      background: var(--chip);
+      border: 1px solid var(--border);
+      padding: 8px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      color: #cbd5e1;
+    }
+    .muted { color: var(--muted); }
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 14px 18px;
+      font-size: 12px; color: var(--muted);
+      display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+    }
+    .spinner {
+      width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.2);
+      border-top-color: white; border-radius: 50%;
+      animation: spin 0.7s linear infinite; display: none; margin-left: 6px;
+    }
+    .loading .spinner { display: inline-block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .badge { padding: 4px 8px; background: #0b1220; border: 1px solid var(--border); border-radius: 8px; font-size: 12px; color: #a5b4fc; }
+    .ok { color: #86efac; }
+    .err { color: #fecaca; }
+  </style>
+</head>
+<body>
+  <div class="app" id="app">
+    <header>
+      <div class="brand">
+        <div class="logo">RL</div>
+        <div>
+          <h1>Reverse Lookup (Vanilla JS)</h1>
+          <div class="muted" style="font-size:12px">Recherche d’infos à partir d’un numéro — démo frontend only</div>
+        </div>
+      </div>
+      <div class="key-status" id="keyStatus">
+        <span class="key-dot" id="keyDot"></span>
+        <span id="keyText">Clé API : absente</span>
+      </div>
+    </header>
+
+    <main>
+      <section class="panel">
+        <div class="controls">
+          <div>
+            <label for="number">Numéro de téléphone</label>
+            <div class="input-row">
+              <input id="number" type="tel" placeholder="+15145551234 ou 5145551234" autocomplete="tel" />
+              <button id="btnLookup">
+                <span>Rechercher</span>
+                <span class="spinner" id="spinner"></span>
+              </button>
+            </div>
+            <div class="note">Astuce : ajoutez le code pays (+1 CA/US, +33 FR…).</div>
+          </div>
+
+          <div class="btn-row">
+            <button class="secondary" id="btnSetKey">Définir / changer la clé API</button>
+            <button class="warning" id="btnTestKey">Tester la clé</button>
+            <button class="danger" id="btnClearKey">Effacer la clé</button>
+          </div>
+
+          <div class="chips" id="chips"></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <label>Résultat</label>
+        <div class="result" id="result">En attente…</div>
+        <div class="note" style="margin-top:8px">
+          ⚠️ Certaines APIs bloquent les appels navigateur (CORS) ou n’autorisent pas l’usage client-side.  
+          Pour des données sensibles, utilisez un micro-backend (Cloudflare Worker, Firebase Function, etc.).
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div>
+        <span class="badge">LocalStorage</span> La clé est stockée localement sur <em>cet appareil</em>.  
+        <span class="muted">Effacez-la si vous partagez ce poste.</span>
+      </div>
+      <div class="muted">Démo éducative • Pas d’accès à des données privées non publiques.</div>
+    </footer>
+  </div>
+
+  <script>
+    // ===========================
+    // ⚙️ Config API (à adapter)
+    // ===========================
+    // Exemple : Numverify/apilayer format :
+    //   https://apilayer.net/api/validate?access_key=API_KEY&number=PHONE
+    // Remplacez BASE_URL & buildUrl selon votre fournisseur.
+    const BASE_URL = "https://apilayer.net/api/validate";
+
+    function buildUrl({ apiKey, number, countryCode = "" }) {
+      // Certaines APIs acceptent aussi &country_code=XX &format=1
+      const params = new URLSearchParams({
+        access_key: apiKey,
+        number: number.trim(),
+        // country_code: countryCode || "", // décommentez si supporté
+        format: "1"
+      });
+      return `${BASE_URL}?${params.toString()}`;
+    }
+
+    // ===========================
+    // 🔐 Gestion de la clé
+    // ===========================
+    const KEY_STORAGE = "reverse_lookup_api_key";
+
+    function getApiKey() {
+      return localStorage.getItem(KEY_STORAGE) || "";
+    }
+
+    function setApiKey(key) {
+      localStorage.setItem(KEY_STORAGE, key);
+      renderKeyStatus();
+    }
+
+    function clearApiKey() {
+      localStorage.removeItem(KEY_STORAGE);
+      renderKeyStatus();
+    }
+
+    async function promptForKeyIfMissing() {
+      let key = getApiKey();
+      if (!key) {
+        key = prompt("Entrez votre clé API (elle sera stockée en localStorage) :") || "";
+        if (key.trim()) {
+          setApiKey(key.trim());
+        }
+      }
+    }
+
+    function maskKey(key) {
+      if (!key) return "absente";
+      if (key.length <= 6) return "*".repeat(key.length);
+      return key.slice(0, 3) + "********" + key.slice(-3);
+    }
+
+    function renderKeyStatus() {
+      const key = getApiKey();
+      const keyDot = document.getElementById("keyDot");
+      const keyText = document.getElementById("keyText");
+
+      if (key) {
+        keyDot.classList.add("ok");
+        keyText.textContent = "Clé API : " + maskKey(key);
+      } else {
+        keyDot.classList.remove("ok");
+        keyText.textContent = "Clé API : absente";
+      }
+    }
+
+    // ===========================
+    // 🧠 Utilitaires
+    // ===========================
+    function setLoading(isLoading) {
+      const btn = document.getElementById("btnLookup");
+      const app = document.getElementById("app");
+      app.classList.toggle("loading", isLoading);
+      btn.disabled = isLoading;
+    }
+
+    function showResult(obj) {
+      const out = document.getElementById("result");
+      try {
+        out.textContent = JSON.stringify(obj, null, 2);
+      } catch {
+        out.textContent = String(obj);
+      }
+    }
+
+    function showError(message, errorObject) {
+      const out = document.getElementById("result");
+      out.innerHTML = `<span class="err">Erreur :</span> ${message}`;
+      if (errorObject) {
+        out.innerHTML += "\n\n" + `<span class="muted">${escapeHtml(JSON.stringify(errorObject, null, 2))}</span>`;
+      }
+    }
+
+    function escapeHtml(str) {
+      return (str || "").toString()
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+    }
+
+    function renderChipsFromResponse(data) {
+      const chips = document.getElementById("chips");
+      chips.innerHTML = "";
+
+      // Exemple pour APIs type Numverify
+      // Champs fréquents : valid, line_type, carrier, country_name, location, international_format, local_format
+      const fields = [];
+
+      if (typeof data.valid !== "undefined") {
+        fields.push({ label: "Valide", value: data.valid ? "Oui" : "Non" });
+      }
+      if (data.line_type) fields.push({ label: "Type", value: String(data.line_type) });
+      if (data.carrier) fields.push({ label: "Opérateur", value: String(data.carrier) });
+      if (data.country_name) fields.push({ label: "Pays", value: String(data.country_name) });
+      if (data.location) fields.push({ label: "Localisation", value: String(data.location) });
+      if (data.international_format) fields.push({ label: "Format intl.", value: String(data.international_format) });
+      if (data.local_format) fields.push({ label: "Format local", value: String(data.local_format) });
+
+      for (const f of fields) {
+        const el = document.createElement("div");
+        el.className = "chip";
+        el.textContent = `${f.label}: ${f.value}`;
+        chips.appendChild(el);
+      }
+    }
+
+    // ===========================
+    // 🔎 Lookup
+    // ===========================
+    async function lookupNumber() {
+      const numberInput = document.getElementById("number");
+      const number = (numberInput.value || "").trim();
+      const apiKey = getApiKey();
+
+      if (!apiKey) {
+        alert("Veuillez d’abord définir votre clé API.");
+        return;
+      }
+      if (!number) {
+        alert("Saisissez un numéro (ex : +15145551234).");
+        return;
+      }
+
+      setLoading(true);
+      showResult("Requête en cours…");
+      try {
+        const url = buildUrl({ apiKey, number });
+        const res = await fetch(url, { method: "GET" });
+
+        // Gestion CORS : si l’API bloque, le navigateur peut lever une erreur réseau
+        if (!res.ok) {
+          const text = await res.text().catch(() => "");
+          throw new Error(`HTTP ${res.status} ${res.statusText} – ${text}`);
+        }
+
+        const data = await res.json();
+
+        // Vérification d’erreurs spécifiques à certaines APIs (ex: {success:false, error:{…}})
+        if (data.success === false && data.error) {
+          throw new Error(`${data.error.code || ""} ${data.error.type || ""} – ${data.error.info || "Erreur API"}`);
+        }
+
+        renderChipsFromResponse(data);
+        showResult(data);
+      } catch (err) {
+        console.error(err);
+        showError(
+          "Impossible d’interroger l’API. Causes possibles : clé invalide, CORS bloqué, quota atteint, format d’URL incorrect.",
+          { message: err.message }
+        );
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    async function testKey() {
+      const apiKey = getApiKey();
+      if (!apiKey) {
+        alert("Aucune clé configurée.");
+        return;
+      }
+      // On teste avec un numéro “inoffensif” (ex: 000 ou format vide). Certaines APIs exigent un numéro réaliste.
+      setLoading(true);
+      showResult("Test de la clé…");
+      try {
+        const url = buildUrl({ apiKey, number: "000" });
+        const res = await fetch(url);
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data) {
+          showResult({ test: "ok", response_sample: data });
+        } else {
+          showError("Le test n’a pas abouti. La clé peut être invalide ou l’API refuse les requêtes navigateur.", { status: res.status });
+        }
+      } catch (e) {
+        showError("Erreur durant le test de la clé.", { message: e.message });
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    // ===========================
+    // 🔘 Events & init
+    // ===========================
+    function bindEvents() {
+      document.getElementById("btnLookup").addEventListener("click", lookupNumber);
+      document.getElementById("number").addEventListener("keydown", (e) => {
+        if (e.key === "Enter") lookupNumber();
+      });
+      document.getElementById("btnSetKey").addEventListener("click", async () => {
+        const current = getApiKey();
+        const next = prompt(`Entrez votre clé API :\n(la clé actuelle est ${current ? maskKey(current) : "absente"})`, current || "");
+        if (next !== null) {
+          if (next.trim()) setApiKey(next.trim());
+          else clearApiKey();
+        }
+      });
+      document.getElementById("btnClearKey").addEventListener("click", () => {
+        if (confirm("Effacer la clé API du localStorage ?")) clearApiKey();
+      });
+      document.getElementById("btnTestKey").addEventListener("click", testKey);
+    }
+
+    (async function init() {
+      renderKeyStatus();
+      bindEvents();
+      await promptForKeyIfMissing();
+      renderKeyStatus();
+    })();
+  </script>
+</body>
+</html>
